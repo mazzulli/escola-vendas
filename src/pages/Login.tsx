@@ -25,7 +25,7 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleRequestOTP = async (e: React.FormEvent) => {
+  const handleRequestOTP = async (e: React.SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
     e.preventDefault();
     setIsLoading(true);
     try {
@@ -34,12 +34,12 @@ export default function Login() {
         body: JSON.stringify({ email }),
       });
       toast.success(res.message);
-      if (res.otp) {
+      // if (res.otp) {
         // console.log("-----------------------------------------");
         // console.log("SEU CÓDIGO DE ACESSO (OTP):", res.otp);
         // console.log("-----------------------------------------");
         // toast.info(`CÓDIGO DE TESTE: ${res.otp}`, { duration: 10000 });
-      }
+      // }
       setStep('verify');
     } catch (err: any) {
       toast.error(err.message);
@@ -48,7 +48,7 @@ export default function Login() {
     }
   };
 
-  const handleVerifyOTP = async (e: React.FormEvent) => {
+  const handleVerifyOTP = async (e: React.SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
     e.preventDefault();
     setIsLoading(true);
     try {
@@ -72,7 +72,7 @@ export default function Login() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-[400px]"
+        className="w-full max-w-100"
       >
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-200 mb-4 rotate-3">

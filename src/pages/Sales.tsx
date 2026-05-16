@@ -66,7 +66,7 @@ export default function Sales() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [quantity, setQuantity] = useState('1');
-  const [saleDate, setSaleDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [saleDate, setSaleDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [isLoading, setIsLoading] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -77,7 +77,7 @@ export default function Sales() {
         apiFetch('/sales'),
         apiFetch('/products')
       ]);
-      setSales(salesData);
+      setSales(salesData);      
       setProducts(productsData.filter((p: Product) => p.stock > 0));
     } catch (err: any) {
       toast.error(err.message);
@@ -108,7 +108,7 @@ export default function Sales() {
       setSelectedProductId('');
       setPaymentMethod('');
       setQuantity('1');
-      setSaleDate(format(new Date(), 'yyyy-MM-dd'));
+      setSaleDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
       fetchData();
     } catch (err: any) {
       toast.error(err.message);
@@ -218,7 +218,7 @@ export default function Sales() {
             <FileDown className="w-3.5 h-3.5 mr-1.5" />
             Exportar Excel
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 h-9 text-xs font-bold px-4 flex-grow sm:flex-grow-0" onClick={() => setIsDialogOpen(true)}>
+          <Button className="bg-indigo-600 hover:bg-indigo-700 h-9 text-xs font-bold px-4 grow sm:grow-0" onClick={() => setIsDialogOpen(true)}>
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             Registrar Venda
           </Button>
@@ -277,7 +277,7 @@ export default function Sales() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <Table className="min-w-[600px]">
+        <Table className="min-w-150">
           <TableHeader className="bg-slate-50 border-b border-slate-200">
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-wider h-10 px-4">Data / Hora</TableHead>
@@ -294,7 +294,7 @@ export default function Sales() {
                 <TableCell className="px-4 py-2.5 text-[11px] text-slate-500 font-medium">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3 h-3 text-slate-400" />
-                    {format(new Date(sale.date), "dd/MM/yy HH:mm", { locale: ptBR })}
+                    {format(new Date(sale.date), "dd/MM/yyyy HH:mm", { locale: ptBR })}                    
                   </div>
                 </TableCell>
                 <TableCell className="px-4 py-2.5 text-xs font-bold text-slate-800">
@@ -336,7 +336,7 @@ export default function Sales() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] border-slate-200 rounded-2xl">
+        <DialogContent className="sm:max-w-100 border-slate-200 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold uppercase tracking-wide text-slate-600 border-l-4 border-indigo-600 pl-3">
               Nova Venda Direta
@@ -345,8 +345,11 @@ export default function Sales() {
           <form onSubmit={handleCreateSale} className="space-y-4 pt-2">
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold text-slate-500 uppercase">Item a Vender</Label>
-              <Select onValueChange={setSelectedProductId} value={selectedProductId}>
-                <SelectTrigger className="h-10 text-xs border-slate-200">
+              <Select
+                onValueChange={(value) => setSelectedProductId(value || '')}
+                value={selectedProductId || ''}
+              >
+                <SelectTrigger className="h-10 text-xs border-slate-200 w-full">
                   <SelectValue placeholder="Escolha um produto disponível...">
                     {selectedProduct?.name}
                   </SelectValue>
@@ -367,12 +370,12 @@ export default function Sales() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Data do Pagamento / Venda</Label>
+              <Label className="text-[10px] font-bold text-slate-500 uppercase">Data e Hora da Venda</Label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input 
-                  type="date" 
-                  max={format(new Date(), 'yyyy-MM-dd')}
+                  type="datetime-local" 
+                  max={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                   className="h-10 text-xs pl-9 border-slate-200" 
                   value={saleDate}
                   onChange={(e) => setSaleDate(e.target.value)}
@@ -396,7 +399,10 @@ export default function Sales() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold text-slate-500 uppercase">Pagamento</Label>
-                <Select onValueChange={setPaymentMethod} value={paymentMethod}>
+                <Select 
+                  onValueChange={(value) => setPaymentMethod(value || '')} 
+                  value={paymentMethod || ''}
+                >
                   <SelectTrigger className="h-10 text-xs border-slate-200">
                     <SelectValue placeholder="Selecione o método" />
                   </SelectTrigger>
@@ -429,7 +435,10 @@ export default function Sales() {
                 className="bg-indigo-600 hover:bg-indigo-700 h-9 text-xs font-bold px-6" 
                 disabled={isLoading || !selectedProductId || !paymentMethod || parseInt(quantity) > (selectedProduct?.stock || 0)}
               >
-                {isLoading ? 'Liquidando...' : 'Liquidizar Venda'}
+                {isLoading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {isLoading ? 'Confirmando...' : 'Confirmar Venda'}
               </Button>
             </DialogFooter>
           </form>

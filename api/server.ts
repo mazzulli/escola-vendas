@@ -474,5 +474,5 @@ async function startServer() {
 }
 
 startServer().catch((err) => {
-  console.error("Failed to start server", err);
+  console.error("Ops, encontramos um erro ao iniciar o servidor", err);
 });
