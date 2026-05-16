@@ -63,7 +63,7 @@ export default function Reservations() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
-  const [completeDate, setCompleteDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [completeDate, setCompleteDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [activeReservationId, setActiveReservationId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -116,18 +116,39 @@ export default function Reservations() {
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: string, paymentMethod?: string) => {
+  const handleUpdateStatus = async (id: string, status: string ) => {
     try {
+      // Atualizar o status da reserva
       await apiFetch(`/reservations/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ status, paymentMethod, date: status === 'COMPLETED' ? completeDate : undefined }),
+        body: JSON.stringify({ status, date: status === 'COMPLETED' ? completeDate : undefined }),
       });
+
+      // Se a reserva foi concluída, atualizar o estoque somando a quantidade
+      if (status === 'COMPLETED') {
+        const reservation = reservations.find(res => res.id === id);
+        if (reservation) {
+          const currentProduct = products.find(p => p.id === reservation.productId);
+          if (currentProduct) {
+            const newStock = currentProduct.stock + reservation.quantity;
+            await apiFetch(`/products/${reservation.productId}`, {
+              method: 'PUT',
+              body: JSON.stringify({ 
+                name: currentProduct.name,
+                price: currentProduct.price,
+                stock: newStock 
+              }),
+            });
+          }
+        }
+      }
+
       toast.success(`Reserva ${status === 'COMPLETED' ? 'concluída' : 'cancelada'}`);
       fetchData();
       setIsPaymentDialogOpen(false);
       setActiveReservationId(null);
       setSelectedPaymentMethod('');
-      setCompleteDate(format(new Date(), 'yyyy-MM-dd'));
+      setCompleteDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -158,6 +179,8 @@ export default function Reservations() {
       setItemToDelete(null);
     }
   };
+
+  const selectedProduct = products.find(p => p.id === formData.productId);
 
   const statusBadge = (status: string) => {
     switch(status) {
@@ -210,7 +233,7 @@ export default function Reservations() {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <Table className="min-w-[700px]">
+        <Table className="min-w-175">
           <TableHeader className="bg-slate-50 border-b border-slate-200">
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-[10px] font-bold text-slate-500 uppercase tracking-wider h-10 px-4">Cliente / Data</TableHead>
@@ -294,7 +317,7 @@ export default function Reservations() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] border-slate-200 rounded-2xl">
+        <DialogContent className="sm:max-w-100 border-slate-200 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold uppercase tracking-wide text-slate-600 border-l-4 border-indigo-600 pl-3">
               Cadastrar Reserva
@@ -304,9 +327,13 @@ export default function Reservations() {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-[10px] font-bold text-slate-500 uppercase">Item Solicitado</Label>
-                <Select onValueChange={(v) => setFormData({...formData, productId: v})} value={formData.productId}>
-                  <SelectTrigger className="h-9 text-xs border-slate-200">
-                    <SelectValue placeholder="Selecione o produto" />
+                <Select                   
+                  onValueChange={(v) => setFormData({...formData, productId: v ? v : ''})} value={formData.productId}
+                >
+                  <SelectTrigger className="h-9 text-xs border-slate-200 w-full">
+                    <SelectValue placeholder="Selecione o produto">
+                      {selectedProduct?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {products.map(p => (
@@ -362,6 +389,9 @@ export default function Reservations() {
             <DialogFooter className="pt-2">
               <Button type="button" variant="ghost" className="h-9 text-xs font-bold" onClick={() => setIsDialogOpen(false)}>Fechar</Button>
               <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 h-9 text-xs font-bold px-6" disabled={isLoading}>
+                 {isLoading && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
                 {isLoading ? 'Confirmando...' : 'Efetivar Reserva'}
               </Button>
             </DialogFooter>
@@ -370,33 +400,33 @@ export default function Reservations() {
       </Dialog>
 
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] border-slate-200 rounded-2xl">
+        <DialogContent className="sm:max-w-100 border-slate-200 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold uppercase tracking-wide text-emerald-600 border-l-4 border-emerald-600 pl-3">
               Concluir Encomenda
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            <p className="text-xs text-slate-500">Selecione o método de pagamento e a data para finalizar a entrega.</p>
+            <p className="text-xs text-slate-500">Confirma a conclusão da encomenda e atualizar o saldo em estoque?</p>
             
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Data do Pagamento</Label>
+            {/* <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold text-slate-500 uppercase">Data e Hora da Conclusão</Label>
               <div className="relative">
                 <CalendarCheck className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input 
-                  type="date" 
-                  max={format(new Date(), 'yyyy-MM-dd')}
+                  type="datetime-local" 
+                  max={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
                   className="h-10 text-xs pl-9 border-slate-200" 
                   value={completeDate}
                   onChange={(e) => setCompleteDate(e.target.value)}
                   required
                 />
               </div>
-            </div>
+            </div> */}
 
-            <div className="space-y-1.5">
+            {/* <div className="space-y-1.5">
               <Label className="text-[10px] font-bold text-slate-500 uppercase">Tipo de Pagamento</Label>
-              <Select onValueChange={setSelectedPaymentMethod} value={selectedPaymentMethod}>
+              <Select onValueChange={(value) => setSelectedPaymentMethod(value || '')} value={selectedPaymentMethod}>
                 <SelectTrigger className="h-10 text-xs border-slate-200">
                   <SelectValue placeholder="Selecione o método..." />
                 </SelectTrigger>
@@ -407,16 +437,20 @@ export default function Reservations() {
                   <SelectItem value="PIX" className="text-xs">Pix</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
           <DialogFooter className="pt-4">
             <Button variant="ghost" className="h-9 text-xs font-bold" onClick={() => setIsPaymentDialogOpen(false)}>Fechar</Button>
             <Button 
               className="bg-emerald-600 hover:bg-emerald-700 h-9 text-xs font-bold px-6" 
-              onClick={() => handleUpdateStatus(activeReservationId!, 'COMPLETED', selectedPaymentMethod)}
-              disabled={!selectedPaymentMethod}
+              onClick={() => {
+                if (activeReservationId) {
+                  handleUpdateStatus(activeReservationId, 'COMPLETED');
+                }
+              }}
+              // disabled={!selectedPaymentMethod || !activeReservationId}
             >
-              Finalizar e Entregar
+              Finalizar produção
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -22,7 +22,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "API Request failed");
+    throw new Error(errorData.error || "Ops, não foi possível acessar a API");
   }
 
   return response.json();
