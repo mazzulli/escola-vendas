@@ -12,6 +12,52 @@ const prisma = new PrismaClient();
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
 
+// --- SMTP Configuration ---
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+async function sendOTPEmail(email: string, code: string) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn("SMTP credentials not configured. Skipping email send.");
+    return;
+  }
+
+  const mailOptions = {
+    from: `"Vendas App" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject: "Seu código de acesso",
+    text: `Seu código de acesso é: ${code}. Ele expira em 5 minutos.`,
+    html: `
+      <div style="font-family: sans-serif; padding: 20px; color: #333;">
+        <h2>Código de Acesso</h2>
+        <p>Seu código para acessar o sistema de vendas é:</p>
+        <div style="font-size: 32px; font-weight: bold; color: #4f46e5; margin: 20px 0; letter-spacing: 5px;">
+          ${code}
+        </div>
+        <p>Este código expira em 5 minutos.</p>
+        <p style="font-size: 12px; color: #666; margin-top: 40px;">
+          Se você não solicitou este código, ignore este e-mail.
+        </p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Email sent to ${email}`);
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw new Error("Failed to send OTP email");
+  }
+}
+
 async function startServer() {
   const app = express();
   app.use(express.json());
@@ -59,15 +105,15 @@ async function startServer() {
 
     console.log(`OTP for ${email}: ${otpCode}`);
 
-    // Mock sending email
-    // if you have SMTP configured, you'd use nodemailer here.
-    // For now, we'll return it in the response for easy testing in AI Studio
-    // unless the user explicitly wants it to be perfectly secure.
-    // I'll return it ONLY if process.env.NODE_ENV !== 'production'
-    res.json({ 
-      message: "OTP sent to your email", 
-      otp: process.env.NODE_ENV !== 'production' ? otpCode : undefined 
-    });
+    try {
+      await sendOTPEmail(email, otpCode);
+      res.json({ 
+        message: "OTP enviado para seu e-mail", 
+        otp: process.env.NODE_ENV !== 'production' ? otpCode : undefined 
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Erro ao enviar e-mail. Verifique a configuração SMTP." });
+    }
   });
 
   // Auth: Verify OTP
