@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sales     Sale[]
+}
+
+model OTP {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  price        Float
+  stock        Int           @default(0)
+  minStock     Int           @default(5)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sales        Sale[]
+  reservations Reservation[]
+}
+
+model Sale {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  total         Float
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  paymentMethod String   @default("MONEY") // MONEY, DEBIT, CREDIT, PIX
+  date          DateTime @default(now())
+}
+
+model Reservation {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  customerName  String
+  customerDoc   String
+  customerPhone String
+  date          DateTime @default(now())
+  status        String   @default("PENDING") // PENDING, COMPLETED, CANCELED
+}

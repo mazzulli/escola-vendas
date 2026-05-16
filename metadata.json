@@ -1,0 +1,6 @@
+{
+  "name": "EscolarVendas",
+  "description": "Sistema de controle financeiro e estoque para vendas em escolas com autenticação OTP.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
