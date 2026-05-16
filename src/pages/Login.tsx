@@ -35,10 +35,10 @@ export default function Login() {
       });
       toast.success(res.message);
       if (res.otp) {
-        console.log("-----------------------------------------");
-        console.log("SEU CÓDIGO DE ACESSO (OTP):", res.otp);
-        console.log("-----------------------------------------");
-        toast.info(`CÓDIGO DE TESTE: ${res.otp}`, { duration: 10000 });
+        // console.log("-----------------------------------------");
+        // console.log("SEU CÓDIGO DE ACESSO (OTP):", res.otp);
+        // console.log("-----------------------------------------");
+        // toast.info(`CÓDIGO DE TESTE: ${res.otp}`, { duration: 10000 });
       }
       setStep('verify');
     } catch (err: any) {
@@ -78,7 +78,7 @@ export default function Login() {
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-200 mb-4 rotate-3">
             E
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">EscolaVendas <span className="text-indigo-600">Pro</span></h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Escola Vendas <span className="text-indigo-600">Pro</span></h1>
           <p className="text-slate-400 text-sm font-medium">Terminal de Acesso Seguro</p>
         </div>
 
@@ -145,8 +145,8 @@ export default function Login() {
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="flex flex-col gap-3 pb-8">
-                  <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]" disabled={isLoading}>
+                <CardFooter className="flex flex-col gap-3 pb-2">
+                  <Button type="submit" className="mt-6 w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-[0.98]" disabled={isLoading}>
                     {isLoading ? 'Autenticando...' : (step === 'request' ? 'Emitir Token de Acesso' : 'Efetivar Login')}
                   </Button>
                   {step === 'verify' && (

@@ -64,13 +64,13 @@ async function startServer() {
 
   // --- Auth Middleware ---
   const authenticateToken = (req: any, res: any, next: any) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
 
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
+    if (!token) return res.status(401).json({ error: "Não autorizado" });
 
     jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-      if (err) return res.status(403).json({ error: "Forbidden" });
+      if (err) return res.status(403).json({ error: "Acesso negado" });
       req.user = user;
       next();
     });
@@ -81,73 +81,85 @@ async function startServer() {
   // Auth: Request OTP
   app.post("/api/auth/request-otp", async (req, res) => {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ error: "Email is required" });
+    if (!email) return res.status(400).json({ error: "E-mail é obrigatório" });
 
     // In a real app, check if user exists.
     // Let's ensure user exists or create them if it's the first time
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      const userCount = await prisma.user.count();
-      user = await prisma.user.create({ 
-        data: { 
-          email,
-          isAdmin: userCount === 0 // Primeiro usuário é Admin
-        } 
-      });
+      res.status(500).json({ error: "Usuário não encontrado!" });
+      return;
+      // const userCount = await prisma.user.count();
+      // user = await prisma.user.create({
+      //   data: {
+      //     email,
+      //     isAdmin: userCount === 0 // Primeiro usuário é Admin
+      //   }
+      // });
     }
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     await prisma.oTP.create({
-      data: { email, code: otpCode, expiresAt }
+      data: { email, code: otpCode, expiresAt },
     });
 
-    console.log(`OTP for ${email}: ${otpCode}`);
+    // console.log(`OTP for ${email}: ${otpCode}`);
 
     try {
       await sendOTPEmail(email, otpCode);
-      res.json({ 
-        message: "OTP enviado para seu e-mail", 
-        otp: process.env.NODE_ENV !== 'production' ? otpCode : undefined 
+      res.json({
+        message: "OTP enviado para seu e-mail",
+        otp: process.env.NODE_ENV !== "production" ? otpCode : undefined,
       });
     } catch (err) {
-      res.status(500).json({ error: "Erro ao enviar e-mail. Verifique a configuração SMTP." });
+      res.status(500).json({
+        error: "Erro ao enviar e-mail. Verifique a configuração SMTP.",
+      });
     }
   });
 
   // Auth: Verify OTP
   app.post("/api/auth/verify-otp", async (req, res) => {
     const { email, code } = req.body;
-    if (!email || !code) return res.status(400).json({ error: "Email and code are required" });
+    if (!email || !code)
+      return res
+        .status(400)
+        .json({ error: "E-mail e código são obrigatórios" });
 
     const otp = await prisma.oTP.findFirst({
       where: {
         email,
         code,
-        expiresAt: { gt: new Date() }
+        expiresAt: { gt: new Date() },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
 
     if (!otp) {
-      return res.status(400).json({ error: "Invalid or expired OTP" });
+      return res.status(400).json({ error: "Código inválido ou expirado" });
     }
 
     let user = await prisma.user.findUnique({ where: { email } });
-    
+
     // Promote user to admin if it's the target email or the only user
-    if (user && !user.isAdmin && (email === 'mazzulli.danilo@gmail.com' || (await prisma.user.count()) === 1)) {
+    if (
+      user &&
+      !user.isAdmin &&
+      (email === "mazzulli.danilo@gmail.com" ||
+        (await prisma.user.count()) === 1)
+    ) {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { isAdmin: true }
+        data: { isAdmin: true },
       });
     }
 
     const token = jwt.sign(
-      { id: user?.id, email: user?.email, isAdmin: user?.isAdmin }, 
-      JWT_SECRET, 
-      { expiresIn: '24h' }
+      { id: user?.id, email: user?.email, isAdmin: user?.isAdmin },
+      JWT_SECRET,
+      { expiresIn: "24h" },
     );
 
     // Delete OTP after use
@@ -159,14 +171,16 @@ async function startServer() {
   // --- Users CRUD (Admin Only) ---
   const requireAdmin = (req: any, res: any, next: any) => {
     if (!req.user || !req.user.isAdmin) {
-      return res.status(403).json({ error: "Acesso negado. Apenas administradores." });
+      return res
+        .status(403)
+        .json({ error: "Acesso negado. Apenas administradores." });
     }
     next();
   };
 
   app.get("/api/users", authenticateToken, requireAdmin, async (req, res) => {
     const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
     res.json(users);
   });
@@ -175,7 +189,7 @@ async function startServer() {
     const { email, name, isAdmin } = req.body;
     try {
       const user = await prisma.user.create({
-        data: { email, name, isAdmin: !!isAdmin }
+        data: { email, name, isAdmin: !!isAdmin },
       });
       res.json(user);
     } catch (err: any) {
@@ -183,44 +197,59 @@ async function startServer() {
     }
   });
 
-  app.put("/api/users/:id", authenticateToken, requireAdmin, async (req, res) => {
-    const { email, name, isAdmin } = req.body;
-    try {
-      const user = await prisma.user.update({
-        where: { id: req.params.id },
-        data: { email, name, isAdmin: !!isAdmin }
-      });
-      res.json(user);
-    } catch (err: any) {
-      res.status(400).json({ error: "Erro ao atualizar usuário" });
-    }
-  });
-
-  app.delete("/api/users/:id", authenticateToken, requireAdmin, async (req, res) => {
-    try {
-      // Prevent deleting self
-      if (req.params.id === (req as any).user.id) {
-        return res.status(400).json({ error: "Você não pode excluir seu próprio usuário" });
+  app.put(
+    "/api/users/:id",
+    authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+      const { email, name, isAdmin } = req.body;
+      try {
+        const user = await prisma.user.update({
+          where: { id: req.params.id },
+          data: { email, name, isAdmin: !!isAdmin },
+        });
+        res.json(user);
+      } catch (err: any) {
+        res.status(400).json({ error: "Erro ao atualizar usuário" });
       }
-      await prisma.user.delete({ where: { id: req.params.id } });
-      res.json({ success: true });
-    } catch (err: any) {
-      console.error(err);
-      res.status(400).json({ error: "Este usuário possui registros vinculados e não pode ser excluído." });
-    }
-  });
+    },
+  );
+
+  app.delete(
+    "/api/users/:id",
+    authenticateToken,
+    requireAdmin,
+    async (req, res) => {
+      try {
+        // Prevent deleting self
+        if (req.params.id === (req as any).user.id) {
+          return res
+            .status(400)
+            .json({ error: "Você não pode excluir seu próprio usuário" });
+        }
+        await prisma.user.delete({ where: { id: req.params.id } });
+        res.json({ success: true });
+      } catch (err: any) {
+        console.error(err);
+        res.status(400).json({
+          error:
+            "Este usuário possui registros vinculados e não pode ser excluído.",
+        });
+      }
+    },
+  );
 
   // Products CRUD
   app.get("/api/products", authenticateToken, async (req, res) => {
     const products = await prisma.product.findMany({
-      orderBy: { name: 'asc' }
+      orderBy: { name: "asc" },
     });
     res.json(products);
   });
 
   app.post("/api/products", authenticateToken, async (req, res) => {
     const product = await prisma.product.create({
-      data: req.body
+      data: req.body,
     });
     res.json(product);
   });
@@ -228,7 +257,7 @@ async function startServer() {
   app.put("/api/products/:id", authenticateToken, async (req, res) => {
     const product = await prisma.product.update({
       where: { id: req.params.id },
-      data: req.body
+      data: req.body,
     });
     res.json(product);
   });
@@ -238,7 +267,10 @@ async function startServer() {
       await prisma.product.delete({ where: { id: req.params.id } });
       res.json({ success: true });
     } catch (err: any) {
-      res.status(400).json({ error: "Este produto possui vendas ou reservas vinculadas e não pode ser excluído. Tente zerar o estoque em vez disso." });
+      res.status(400).json({
+        error:
+          "Este produto possui vendas ou reservas vinculadas e não pode ser excluído. Tente zerar o estoque em vez disso.",
+      });
     }
   });
 
@@ -246,23 +278,26 @@ async function startServer() {
   app.get("/api/sales", authenticateToken, async (req, res) => {
     const sales = await prisma.sale.findMany({
       include: { product: true, user: true },
-      orderBy: { date: 'desc' }
+      orderBy: { date: "desc" },
     });
     res.json(sales);
   });
 
   app.post("/api/sales", authenticateToken, async (req, res) => {
     const { productId, quantity, paymentMethod, date } = req.body;
-    if (!paymentMethod) return res.status(400).json({ error: "Tipo de pagamento é obrigatório" });
+    if (!paymentMethod)
+      return res.status(400).json({ error: "Tipo de pagamento é obrigatório" });
 
-    const product = await prisma.product.findUnique({ where: { id: productId } });
-    
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
     if (!product || product.stock < quantity) {
       return res.status(400).json({ error: "Insufficient stock" });
     }
 
     const total = product.price * quantity;
-    
+
     const [sale] = await prisma.$transaction([
       prisma.sale.create({
         data: {
@@ -271,13 +306,13 @@ async function startServer() {
           total,
           userId: (req as any).user.id,
           paymentMethod,
-          date: date ? new Date(date) : new Date()
-        }
+          date: date ? new Date(date) : new Date(),
+        },
       }),
       prisma.product.update({
         where: { id: productId },
-        data: { stock: { decrement: quantity } }
-      })
+        data: { stock: { decrement: quantity } },
+      }),
     ]);
 
     res.json(sale);
@@ -285,15 +320,17 @@ async function startServer() {
 
   app.delete("/api/sales/:id", authenticateToken, async (req, res) => {
     try {
-      const sale = await prisma.sale.findUnique({ where: { id: req.params.id } });
+      const sale = await prisma.sale.findUnique({
+        where: { id: req.params.id },
+      });
       if (!sale) return res.status(404).json({ error: "Venda não encontrada" });
 
       await prisma.$transaction([
         prisma.sale.delete({ where: { id: req.params.id } }),
         prisma.product.update({
           where: { id: sale.productId },
-          data: { stock: { increment: sale.quantity } }
-        })
+          data: { stock: { increment: sale.quantity } },
+        }),
       ]);
       res.json({ success: true });
     } catch (err: any) {
@@ -305,14 +342,14 @@ async function startServer() {
   app.get("/api/reservations", authenticateToken, async (req, res) => {
     const reservations = await prisma.reservation.findMany({
       include: { product: true },
-      orderBy: { date: 'desc' }
+      orderBy: { date: "desc" },
     });
     res.json(reservations);
   });
 
   app.post("/api/reservations", authenticateToken, async (req, res) => {
     const reservation = await prisma.reservation.create({
-      data: req.body
+      data: req.body,
     });
     res.json(reservation);
   });
@@ -328,20 +365,25 @@ async function startServer() {
 
   app.put("/api/reservations/:id", authenticateToken, async (req, res) => {
     const { status, paymentMethod, date } = req.body;
-    const existing = await prisma.reservation.findUnique({ 
+    const existing = await prisma.reservation.findUnique({
       where: { id: req.params.id },
-      include: { product: true }
+      include: { product: true },
     });
 
     if (!existing) return res.status(404).json({ error: "Not found" });
 
     // Transition PENDING -> COMPLETED: Perform the sale
-    if (existing.status === 'PENDING' && status === 'COMPLETED') {
-      if (!paymentMethod) return res.status(400).json({ error: "Tipo de pagamento é obrigatório para concluir a encomenda" });
+    if (existing.status === "PENDING" && status === "COMPLETED") {
+      if (!paymentMethod)
+        return res.status(400).json({
+          error: "Tipo de pagamento é obrigatório para concluir a encomenda",
+        });
 
       const product = existing.product;
       if (product.stock < existing.quantity) {
-        return res.status(400).json({ error: "Insufficient stock to fulfill reservation" });
+        return res
+          .status(400)
+          .json({ error: "Insufficient stock to fulfill reservation" });
       }
 
       await prisma.$transaction([
@@ -352,22 +394,22 @@ async function startServer() {
             total: product.price * existing.quantity,
             userId: (req as any).user.id,
             paymentMethod,
-            date: date ? new Date(date) : new Date()
-          }
+            date: date ? new Date(date) : new Date(),
+          },
         }),
         prisma.product.update({
           where: { id: existing.productId },
-          data: { stock: { decrement: existing.quantity } }
+          data: { stock: { decrement: existing.quantity } },
         }),
         prisma.reservation.update({
           where: { id: req.params.id },
-          data: { status }
-        })
+          data: { status },
+        }),
       ]);
     } else {
       await prisma.reservation.update({
         where: { id: req.params.id },
-        data: { status }
+        data: { status },
       });
     }
 
@@ -377,24 +419,29 @@ async function startServer() {
   // Dashboard / Reports
   app.get("/api/dashboard", authenticateToken, async (req, res) => {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [dailySales, monthlySales, lowStockProducts, totalProducts] = await Promise.all([
-      prisma.sale.aggregate({
-        where: { date: { gte: todayStart } },
-        _sum: { total: true },
-        _count: true
-      }),
-      prisma.sale.aggregate({
-        where: { date: { gte: monthStart } },
-        _sum: { total: true }
-      }),
-      prisma.product.findMany({
-        where: { stock: { lte: prisma.product.fields.minStock } }
-      }),
-      prisma.product.count()
-    ]);
+    const [dailySales, monthlySales, lowStockProducts, totalProducts] =
+      await Promise.all([
+        prisma.sale.aggregate({
+          where: { date: { gte: todayStart } },
+          _sum: { total: true },
+          _count: true,
+        }),
+        prisma.sale.aggregate({
+          where: { date: { gte: monthStart } },
+          _sum: { total: true },
+        }),
+        prisma.product.findMany({
+          where: { stock: { lte: prisma.product.fields.minStock } },
+        }),
+        prisma.product.count(),
+      ]);
 
     res.json({
       dailyTotal: dailySales._sum.total || 0,
@@ -402,7 +449,7 @@ async function startServer() {
       monthlyTotal: monthlySales._sum.total || 0,
       lowStockCount: lowStockProducts.length,
       lowStockItems: lowStockProducts,
-      totalProducts
+      totalProducts,
     });
   });
 
@@ -414,10 +461,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
@@ -426,6 +473,6 @@ async function startServer() {
   });
 }
 
-startServer().catch(err => {
+startServer().catch((err) => {
   console.error("Failed to start server", err);
 });

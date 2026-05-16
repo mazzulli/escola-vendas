@@ -58,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             E
           </div>
           <h1 className="font-bold text-base md:text-lg tracking-tight truncate max-w-[120px] md:max-w-none">
-            EscolaVendas <span className="text-indigo-600">Pro</span>
+            Escola Vendas <span className="text-indigo-600">Pro</span>
           </h1>
         </div>
         <div className="flex items-center gap-3 md:gap-6">
