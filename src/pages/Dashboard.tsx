@@ -3,6 +3,7 @@ import { apiFetch } from '../lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
 import { Button } from '../components/ui/button';
+import SalesByPaymentChart from '../components/SalesByPaymentChart';
 import { 
   TrendingUp, 
   ShoppingBag, 
@@ -72,6 +73,9 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Sales by Payment Method Chart */}
+      {(data && data.dailyCount > 0) && <SalesByPaymentChart />}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions & Low Stock */}
         <div className="lg:col-span-2 space-y-6">
@@ -137,20 +141,20 @@ export default function Dashboard() {
               <TrendingUp className="w-24 h-24" />
             </div>
             <CardHeader className="pb-2">
-              <CardTitle className="text-[10px] uppercase font-bold text-indigo-200 tracking-widest">Meta de Vaturamento</CardTitle>
-              <h3 className="text-2xl font-bold tracking-tight">R$ 5.000,00</h3>
+              <CardTitle className="text-[10px] uppercase font-bold text-indigo-200 tracking-widest">Meta de Faturamento</CardTitle>
+              <h3 className="text-2xl font-bold tracking-tight">R$ 600,00</h3>
             </CardHeader>
             <CardContent>
               <div className="h-1.5 bg-white/20 rounded-full mb-3 overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((data?.monthlyTotal || 0) / 5000 * 100, 100)}%` }}
+                  animate={{ width: `${Math.min((data?.monthlyTotal || 0) / 600 * 100, 100)}%` }}
                   className="h-full bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]" 
                 />
               </div>
               <div className="flex justify-between items-end">
                 <p className="text-[10px] font-bold text-indigo-100 uppercase">Progresso</p>
-                <p className="text-xs font-bold">{((data?.monthlyTotal || 0) / 5000 * 100).toFixed(1)}%</p>
+                <p className="text-xs font-bold">{((data?.monthlyTotal || 0) / 600 * 100).toFixed(1)}%</p>
               </div>
             </CardContent>
           </Card>
