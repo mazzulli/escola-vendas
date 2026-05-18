@@ -363,9 +363,9 @@ EMAIL_PASSWORD="sua_senha_email"
 
 - Foi feito ajuste para mover o arquivo que gerencia o uso da API para a pasta ./api
 - Foi criado o arquivo index.ts com o código correspondente aos requisitos da Vercel
+- Para rodar a aplicação local para os testes usar o comando "vercel dev"
 - O arquivo server.ts continua com a configuração para uso em servidores com Node.js
-- Para rodar em um servidor VPS ou outro fora da Vercel, deve ser feito ajustes para apontar para o server.ts
-- Alterar o package.json para apontar para o server.ts e não para o index.ts
+- Para rodar em um servidor VPS ou outro fora da Vercel, deve ser feito ajustes para apontar para o server.ts, e alterar o package.json para apontar para o server.ts e não para o index.ts
 
 ---
 

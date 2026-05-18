@@ -453,6 +453,45 @@ async function startServer() {
     });
   });
 
+  // Sales by Payment Method
+  app.get(
+    "/api/dashboard/sales-by-payment-method",
+    authenticateToken,
+    async (req, res) => {
+      const sales = await prisma.sale.findMany();
+      const paymentMethodLabels: Record<string, string> = {
+        MONEY: "DINHEIRO",
+        PIX: "PIX",
+        DEBIT: "DÉBITO",
+        CREDIT: "CRÉDITO",
+      };
+
+      const salesByMethod = {
+        MONEY: { total: 0, count: 0 },
+        PIX: { total: 0, count: 0 },
+        DEBIT: { total: 0, count: 0 },
+        CREDIT: { total: 0, count: 0 },
+      };
+
+      sales.forEach((sale) => {
+        const method = sale.paymentMethod as keyof typeof salesByMethod;
+        if (salesByMethod[method]) {
+          salesByMethod[method].total += sale.total;
+          salesByMethod[method].count += 1;
+        }
+      });
+
+      const result = Object.entries(salesByMethod).map(([key, value]) => ({
+        name: paymentMethodLabels[key],
+        value: parseFloat(value.total.toFixed(2)),
+        count: value.count,
+        method: key,
+      }));
+
+      res.json(result);
+    },
+  );
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
